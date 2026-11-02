@@ -3,7 +3,7 @@
 **Zero-dependency static malware triage.** Point it at a file or a folder and get a scored verdict in milliseconds: hashes, entropy, PE structure, import-table capabilities, IOCs and signature rules. Pure Python standard library, so it runs on an air-gapped analysis box with nothing installed.
 
 [![ci](https://github.com/njuj/kira-scan/actions/workflows/ci.yml/badge.svg)](https://github.com/njuj/kira-scan/actions/workflows/ci.yml)
-![python](https://img.shields.io/badge/python-3.9%2B-00ff9c?labelColor=0b0f17)
+![python](https://img.shields.io/badge/python-3.10%2B-00ff9c?labelColor=0b0f17)
 ![deps](https://img.shields.io/badge/dependencies-0-00ff9c?labelColor=0b0f17)
 ![license](https://img.shields.io/badge/license-MIT-00ff9c?labelColor=0b0f17)
 
