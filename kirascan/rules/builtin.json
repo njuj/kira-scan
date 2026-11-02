@@ -1,0 +1,233 @@
+{
+  "rules": [
+    {
+      "id": "win-process-injection",
+      "description": "Remote process injection API chain",
+      "severity": "high",
+      "tags": [
+        "windows",
+        "injection"
+      ],
+      "strings": [
+        "VirtualAllocEx",
+        "WriteProcessMemory",
+        "CreateRemoteThread"
+      ],
+      "condition": "all",
+      "scope": "imports"
+    },
+    {
+      "id": "win-process-hollowing",
+      "description": "Process hollowing primitives",
+      "severity": "high",
+      "tags": [
+        "windows",
+        "injection"
+      ],
+      "strings": [
+        "NtUnmapViewOfSection",
+        "ZwUnmapViewOfSection",
+        "SetThreadContext",
+        "ResumeThread"
+      ],
+      "condition": 3,
+      "scope": "imports"
+    },
+    {
+      "id": "keylogger-apis",
+      "description": "Keyboard capture APIs",
+      "severity": "medium",
+      "tags": [
+        "windows",
+        "spyware"
+      ],
+      "strings": [
+        "GetAsyncKeyState",
+        "SetWindowsHookEx",
+        "GetKeyboardState",
+        "MapVirtualKey"
+      ],
+      "condition": 2,
+      "scope": "imports"
+    },
+    {
+      "id": "anti-debugging",
+      "description": "Debugger detection checks",
+      "severity": "low",
+      "tags": [
+        "evasion"
+      ],
+      "strings": [
+        "IsDebuggerPresent",
+        "CheckRemoteDebuggerPresent",
+        "NtQueryInformationProcess",
+        "OutputDebugString"
+      ],
+      "condition": 2,
+      "scope": "imports"
+    },
+    {
+      "id": "registry-run-persistence",
+      "description": "Autorun registry key (persistence)",
+      "severity": "medium",
+      "tags": [
+        "windows",
+        "persistence"
+      ],
+      "strings": [
+        "\\CurrentVersion\\Run",
+        "\\CurrentVersion\\RunOnce",
+        "\\Winlogon\\Shell"
+      ],
+      "nocase": true
+    },
+    {
+      "id": "powershell-download-cradle",
+      "description": "PowerShell download-and-execute pattern",
+      "severity": "high",
+      "tags": [
+        "powershell",
+        "dropper"
+      ],
+      "strings": [
+        "DownloadString",
+        "DownloadFile",
+        "Invoke-Expression",
+        "IEX(",
+        "Net.WebClient",
+        "FromBase64String",
+        "-EncodedCommand"
+      ],
+      "condition": 2,
+      "nocase": true
+    },
+    {
+      "id": "powershell-stealth-flags",
+      "description": "PowerShell launched hidden / without profile / bypassing policy",
+      "severity": "medium",
+      "tags": [
+        "powershell",
+        "evasion"
+      ],
+      "strings": [
+        "-WindowStyle Hidden",
+        "-w hidden",
+        "-NoProfile",
+        "-nop ",
+        "-ExecutionPolicy Bypass",
+        "-ep bypass"
+      ],
+      "condition": 2,
+      "nocase": true
+    },
+    {
+      "id": "shadow-copy-deletion",
+      "description": "Backup / shadow copy destruction (ransomware pre-encryption step)",
+      "severity": "critical",
+      "tags": [
+        "ransomware"
+      ],
+      "strings": [
+        "vssadmin delete shadows",
+        "wmic shadowcopy delete",
+        "recoveryenabled no",
+        "wbadmin delete catalog"
+      ],
+      "nocase": true
+    },
+    {
+      "id": "ransom-note-language",
+      "description": "Ransom note wording",
+      "severity": "high",
+      "tags": [
+        "ransomware"
+      ],
+      "strings": [
+        "your files have been encrypted",
+        "decryption key",
+        "bitcoin",
+        ".onion",
+        "tor browser",
+        "do not rename"
+      ],
+      "condition": 3,
+      "nocase": true
+    },
+    {
+      "id": "browser-credential-theft",
+      "description": "Access to browser / wallet credential stores (infostealer)",
+      "severity": "medium",
+      "tags": [
+        "stealer"
+      ],
+      "strings": [
+        "\\Login Data",
+        "\\Local State",
+        "logins.json",
+        "key4.db",
+        "wallet.dat",
+        "\\Web Data"
+      ],
+      "condition": 2,
+      "nocase": true
+    },
+    {
+      "id": "chat-webhook-exfil",
+      "description": "Exfiltration through chat webhooks / bot APIs",
+      "severity": "medium",
+      "tags": [
+        "exfiltration"
+      ],
+      "strings": [
+        "discord.com/api/webhooks",
+        "discordapp.com/api/webhooks",
+        "api.telegram.org/bot"
+      ],
+      "nocase": true
+    },
+    {
+      "id": "office-macro-autoexec",
+      "description": "Auto-executing Office macro that spawns processes",
+      "severity": "medium",
+      "tags": [
+        "office",
+        "macro"
+      ],
+      "strings": [
+        "AutoOpen",
+        "Document_Open",
+        "Workbook_Open",
+        "WScript.Shell",
+        "Shell(",
+        "CreateObject("
+      ],
+      "condition": 2,
+      "nocase": true
+    },
+    {
+      "id": "raw-ip-url",
+      "description": "URL that points straight at an IP address",
+      "severity": "low",
+      "tags": [
+        "network"
+      ],
+      "regex": [
+        "https?://(?:\\d{1,3}\\.){3}\\d{1,3}(?::\\d+)?/"
+      ]
+    },
+    {
+      "id": "upx-packed",
+      "description": "UPX packer markers",
+      "severity": "low",
+      "tags": [
+        "packer"
+      ],
+      "strings": [
+        "UPX0",
+        "UPX1",
+        "UPX!"
+      ],
+      "condition": 2
+    }
+  ]
+}
