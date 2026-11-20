@@ -9,10 +9,10 @@ import sys
 import time
 from pathlib import Path
 
-from . import __version__, virustotal
+from . import __version__, virustotal, yara
 from .report import Style, enable_windows_ansi, glyphs_for, render_text, use_color
 from .rules import RuleError, load_builtin, load_path
-from .scanner import Finding, ScanResult, scan_file
+from .scanner import EXTERNALS, Finding, ScanResult, scan_file
 
 EXIT = {"clean": 0, "low": 0, "suspicious": 1, "malicious": 2}
 EXIT_ERROR = 3
@@ -26,6 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("-r", "--recursive", action="store_true", help="descend into sub-directories")
     ap.add_argument("--rules", action="append", type=Path, default=[], metavar="PATH",
                     help="extra rule file or directory of *.json rules (repeatable)")
+    ap.add_argument("--yara", action="append", type=Path, default=[], metavar="PATH",
+                    help="YARA rule file or directory of *.yar/*.yara rules (repeatable)")
     ap.add_argument("--no-builtin", action="store_true", help="skip the built-in rule set")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     ap.add_argument("-v", "--verbose", action="store_true", help="show hashes, PE sections and extracted IOCs")
@@ -56,6 +58,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"kira-scan: {e}", file=sys.stderr)
         return EXIT_ERROR
 
+    yara_rules = None
+    if args.yara:
+        missing = [p for p in args.yara if not p.exists()]
+        if missing:
+            print(f"kira-scan: no such YARA rule file or directory: {missing[0]}", file=sys.stderr)
+            return EXIT_ERROR
+        defaults = {k: "" for k in EXTERNALS}
+        yara_rules = yara.load_rules(args.yara, defaults)
+        _report_yara_load(yara_rules, args.verbose)
+        if not yara_rules.rules:
+            return EXIT_ERROR
+
     vt_key = os.environ.get("VT_API_KEY")
     if args.vt and not vt_key:
         print("kira-scan: --vt needs the VT_API_KEY environment variable", file=sys.stderr)
@@ -65,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     for path in iter_files(args.paths, args.recursive):
         try:
-            res = scan_file(path, rules, max_bytes=args.max_size << 20)
+            res = scan_file(path, rules, max_bytes=args.max_size << 20, yara_rules=yara_rules)
         except OSError as e:
             print(f"kira-scan: {path}: {e.strerror}", file=sys.stderr)
             continue
@@ -86,6 +100,17 @@ def main(argv: list[str] | None = None) -> int:
     if not results:
         return EXIT_ERROR
     return max(EXIT[r.verdict] for r in results)
+
+
+def _report_yara_load(rs: "yara.RuleSet", verbose: bool) -> None:
+    files = len({r.namespace for r in rs.rules} | {s[0] for s in rs.skipped})
+    line = f"kira-scan: {len(rs.rules)} YARA rule(s) loaded from {files} file(s)"
+    if rs.skipped:
+        line += f", {len(rs.skipped)} skipped (features this engine does not implement{'' if verbose else '; -v lists them'})"
+    print(line, file=sys.stderr)
+    if verbose:
+        for source, rule, reason in rs.skipped:
+            print(f"  skipped {Path(source).name}{':' + rule if rule else ''}: {reason}", file=sys.stderr)
 
 
 def _add_virustotal(res: ScanResult, api_key: str) -> None:

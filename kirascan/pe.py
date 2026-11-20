@@ -63,6 +63,7 @@ class PEInfo:
     imports: list[str] = field(default_factory=list)
     imported_dlls: list[str] = field(default_factory=list)
     exports: list[str] = field(default_factory=list)
+    import_pairs: list[tuple] = field(default_factory=list)   # (dll, function name or ordinal), in file order
 
     @property
     def used_imports(self) -> list[str]:
@@ -189,10 +190,15 @@ def _parse_imports(data: bytes, opt: int, opt_size: int, info: PEInfo) -> None:
             value = struct.unpack_from(fmt, data, thunk)[0]
             if value == 0:
                 break
-            if not value & ordinal_flag:
+            if value & ordinal_flag:
+                if dll:
+                    info.import_pairs.append((dll, value & 0xFFFF))
+            else:
                 hint_name = _rva_to_offset(info.sections, value & 0x7FFFFFFF)
                 name = _cstr(data, hint_name + 2 if hint_name is not None else None)
                 if name:
                     info.imports.append(name)
+                    if dll:
+                        info.import_pairs.append((dll, name))
             thunk += size
         desc += 20

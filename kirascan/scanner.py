@@ -8,6 +8,8 @@ Scoring philosophy
   injection APIs). Plenty of legitimate software has them, so their combined
   weight is capped: capabilities alone can make a file *suspicious*, never
   *malicious*.
+* **signatures** — YARA rules the user brings (``--yara``). A hit is someone's
+  deliberate detection, so it counts in full, weighted by the rule's ``score``.
 * **intel** — third-party reputation (VirusTotal).
 """
 
@@ -22,6 +24,7 @@ from .entropy import shannon
 from .hashing import file_hashes
 from .iocs import extract_strings, find_iocs
 from .pe import PACKER_SECTIONS, parse_pe
+from . import yara
 from .rules import Rule
 
 HIGH_ENTROPY = 7.2
@@ -48,6 +51,9 @@ MAGIC = [
 # Formats that are high-entropy by design; flagging them would be pure noise.
 COMPRESSED = {"ZIP / OOXML archive", "RAR archive", "7-Zip archive", "GZIP archive", "PNG image", "JPEG image"}
 
+YARA_SCORE = 70      # a rule without meta.score: a deliberate detection, enough for "malicious" alone
+EXTERNALS = ("filename", "filepath", "extension", "filetype", "owner")
+
 VERDICTS = ((70, "malicious"), (40, "suspicious"), (1, "low"), (0, "clean"))
 
 
@@ -56,7 +62,7 @@ class Finding:
     title: str
     detail: str
     score: int
-    kind: str = "anomaly"  # anomaly | behavior | intel
+    kind: str = "anomaly"  # anomaly | behavior | signature | intel
     source: str = "heuristic"
 
 
@@ -96,7 +102,8 @@ def detect_type(data: bytes) -> str:
     return "data"
 
 
-def scan_file(path: Path, rules: list[Rule], max_bytes: int = 32 << 20, iocs: bool = True) -> ScanResult:
+def scan_file(path: Path, rules: list[Rule], max_bytes: int = 32 << 20, iocs: bool = True,
+              yara_rules: "yara.RuleSet | None" = None) -> ScanResult:
     start = time.perf_counter()
     with open(path, "rb") as f:
         data = f.read(max_bytes)
@@ -121,10 +128,28 @@ def scan_file(path: Path, rules: list[Rule], max_bytes: int = 32 << 20, iocs: bo
             kind = "anomaly" if rule.severity == "critical" else "behavior"
             res.findings.append(Finding(rule.description, ", ".join(hits), rule.score, kind, f"rule:{rule.id}"))
 
+    if yara_rules is not None and yara_rules.rules:
+        res.findings += _yara_findings(path, data, pe, yara_rules)
+
     if iocs:
         res.iocs = find_iocs(extract_strings(data))
     res.elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
     return res
+
+
+def _yara_findings(path: Path, data: bytes, pe, rs: "yara.RuleSet") -> list[Finding]:
+    # the external variables THOR-style rule sets (signature-base) test, filled in for this file
+    ext = {"filename": path.name, "filepath": str(path.parent), "extension": path.suffix.lower(),
+           "filetype": ("DLL" if pe.is_dll else "EXE") if pe else "", "owner": ""}
+    out = []
+    for m in yara.scan(rs, data, ext):
+        score = m.meta.get("score")
+        score = max(0, min(100, score)) if isinstance(score, int) and not isinstance(score, bool) else YARA_SCORE
+        where = ", ".join(f"{n} at 0x{off:x}" for n, off, _ in m.strings[:3])
+        about = m.meta.get("description") or ""
+        detail = "; ".join(x for x in (about, where) if x) or "condition matched"
+        out.append(Finding(f"YARA rule {m.rule}", detail, score, "signature", f"yara:{Path(m.namespace).name}:{m.rule}"))
+    return out
 
 
 def _name_heuristics(path: Path, data: bytes) -> list[Finding]:

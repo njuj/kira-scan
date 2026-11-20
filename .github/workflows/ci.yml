@@ -24,3 +24,14 @@ jobs:
           pip install .
           kira-scan --version
           kira-scan LICENSE
+
+  real-yara:
+    # every rule set in the YARA tests must give the same matches in the real YARA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: sudo apt-get update -q && sudo apt-get install -y -q yara
+      - run: python tests/check_against_yara.py
