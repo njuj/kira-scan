@@ -1,5 +1,7 @@
 # kira-scan
 
+[![Part of Cryptid Security](https://img.shields.io/badge/part_of-Cryptid%20Security-00ff9c?style=flat-square&labelColor=0d1117)](https://github.com/cryptid-security)
+
 **Zero-dependency static malware triage.** Point it at a file or a folder and get a scored verdict in milliseconds: hashes, entropy, PE structure, import-table capabilities, IOCs and signature rules. It also runs **your YARA rules** with its own engine, so the rule sets you already have (signature-base, your team's hunting rules) work on a box where nothing can be installed. Pure Python standard library.
 
 [![ci](https://github.com/njuj/kira-scan/actions/workflows/ci.yml/badge.svg)](https://github.com/njuj/kira-scan/actions/workflows/ci.yml)
